@@ -42,6 +42,36 @@ imagelists:
     - name: library/postgres:15.1-alpine
 ```
 
+The `folder` option on registries has been replaced by `target_prefix` on
+jobs. The old `folder` option still works for now, but prints a deprecation
+warning:
+
+``` yaml
+# Old syntax
+registries:
+  k8s:
+    address: registry.k8s.io
+    folder: k8s.io
+jobs:
+  k8s-to-dev:
+    source: k8s
+    target: dev
+    imagelists:
+      - kubernetes_k8s
+
+# New syntax
+registries:
+  k8s:
+    address: registry.k8s.io
+jobs:
+  k8s-to-dev:
+    source: k8s
+    target: dev
+    target_prefix: k8s.io
+    imagelists:
+      - kubernetes_k8s
+```
+
 ## Create the jobs file
 
 This is the structure of a jobs file, it's in yaml format:
@@ -50,12 +80,8 @@ This is the structure of a jobs file, it's in yaml format:
 registries:
   <registry-name>:
     address: <registry url without the 'http(s)://', or use 'default'>
-    folder: <an optional folder name to use at the target registry>
   <registry-name-2>:
     address: ...
-  <registry-name-3>:
-    address: ...
-    folder: ...
 
 imagelists:
   <imagelist-name>:
@@ -70,6 +96,7 @@ jobs:
   <job-name>:
     source: <source registry-name>
     target: <target registry-name>
+    target_prefix: <optional path prefix for the images in the target registry>
     imagelists:
       - <imagelist-name-1>
       - <imagelist-name-2>
@@ -82,8 +109,8 @@ jobs:
 First define the registries you want to use. Define the registry's address,
 e.g. `harbor.mydomain.com/dev-images`. You can also use 'default', in that case
 Docker will use the default registry as defined by the Docker configuration.
-Optionally define a target folder location. If folder is not defined,
-the root of the target repository will be used.
+The address may include a path, which is useful to pull images that an
+earlier job stored under a prefix (see `target_prefix` below).
 
 Next define imagelists. Each imagelist has a name and contains a list of image
 entries. Each entry has the following properties:
@@ -100,7 +127,11 @@ Note: image entries must use the `name:` form. Plain strings like
 See [Upgrading from an older version](#upgrading-from-an-older-version).
 
 Finally defines jobs. Each job copies the given imagelists from the given
-source registry to the target registry.
+source registry to the target registry. Optionally set `target_prefix` to store
+the images under a path in the target registry. For example, with
+`target_prefix: k8s.io`, the image `coredns:v1.9.3` is copied to
+`<target address>/k8s.io/coredns:v1.9.3`. If `target_prefix` is not set, the
+images are stored at the root of the target address.
 
 You can define multiple jobs and imagelists. Jobs will be performed in the
 given order.

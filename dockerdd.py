@@ -64,8 +64,16 @@ for job in dddata['jobs']:
         source_addr = dddata['registries'][source]['address']
         target_addr = dddata['registries'][target]['address']
 
-        if 'folder' in dddata['registries'][source]:
-            target_folder = '/' + dddata['registries'][source]['folder'] + '/'
+        # Optional path prefix for the images in the target registry, set per
+        # job. The old 'folder' option on the source registry is still
+        # accepted as a fallback, but is deprecated.
+        target_prefix = dddata['jobs'][job].get('target_prefix')
+        if target_prefix is None and 'folder' in dddata['registries'][source]:
+            target_prefix = dddata['registries'][source]['folder']
+            print(f"  WARNING: 'folder' on registry '{source}' is deprecated, "
+                  f"use 'target_prefix' on job '{job}' instead")
+        if target_prefix:
+            target_folder = '/' + target_prefix.strip('/') + '/'
         else:
             target_folder = '/'
 
