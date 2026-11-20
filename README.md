@@ -182,4 +182,7 @@ Dockerdd. If not, see `http://www.gnu.org/licenses/`.
 ## Project information
 
 * Author: Ernest Neijenhuis
+* Contributors:
+  * [Doubleth1nk](https://github.com/Doubleth1nk): the `lts` option and digest
+    generation
 * Code on Github: `https://github.com/pa3hcm/dockerdd`
