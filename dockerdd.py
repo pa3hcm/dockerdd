@@ -145,8 +145,18 @@ for job in dddata['jobs']:
                     except Exception as e:
                         print(f"FAIL: {e}")
                         failures += 1
+                        # Remove the target tag and the pulled source image,
+                        # so failed pushes don't leave images on local disk
+                        print("    cleanup... ", end='', flush=True)
+                        for leftover in (target_full, source_full):
+                            try:
+                                dockerclient.images.remove(leftover)
+                            except Exception:
+                                pass
+                        print("done")
+                        del dockerimage
                         continue
-    
+
                     # Check if image is available in target repo
                     print("verify:", end='', flush=True)
                     osout = os.system(f"docker manifest inspect {target_full} >/dev/null 2>/dev/null")
