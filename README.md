@@ -13,14 +13,14 @@ run the script.
 
 To run this script, you will need:
 
-- Python (including pip)
+- Python 3.11 or newer (including pip)
 - Docker
-- Python's Docker library
+- The Python libraries `docker` and `PyYAML`
 
-To install the Docker library for Python, run the following command:
+To install the Python libraries, run the following command:
 
 ``` sh
-pip install docker
+pip install -r requirements.txt
 ```
 
 ## Upgrading from an older version
@@ -144,13 +144,24 @@ dockerdd.py <jobs-file>
 
 If no jobs file is given, `jobs.yaml` in the current directory is used.
 
+The jobs file is checked before any image is synced. Mistakes such as a job
+that refers to an undefined registry or imagelist are all reported at once.
+
+The script exits with one of these codes, so you can use it in a pipeline:
+
+- `0`: all images were synced
+- `1`: one or more images failed to sync
+- `2`: the jobs file is invalid, or Docker is not available
+
 ## Digests
 
-For every image that is copied, Dockerdd looks up the manifest digest of the
-target image and appends it to `digest.txt` in the current directory, in the
-form `<target-image>:<tag>@<digest>`. You can use these digests to pin images
-by digest instead of by tag. The file is never truncated, so each run adds new
-lines; remove it before a run if you only want the results of that run.
+For every image that is copied and verified, Dockerdd appends the digest that
+the target registry reported for it to `digest.txt` in the current directory,
+in the form `<target-image>:<tag>@<digest>`. You can use these digests to pin
+images by digest instead of by tag. Images that were already in the target
+registry (`cached`) are not added. The file is never truncated, so each run
+adds new lines; remove it before a run if you only want the results of that
+run.
 
 ## Authentication
 
