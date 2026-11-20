@@ -1,20 +1,25 @@
 stages:
   - sync
 
+# Define the following variables in your GitLab project under
+# Settings > CI/CD > Variables, and mark the passwords as 'Masked':
+#
+#   HUB_USER, HUB_PASS  - Docker Hub credentials
+#   DEV_USER, DEV_PASS  - credentials for harbor-dev.mydomain.local
+#   PRD_USER, PRD_PASS  - credentials for harbor-prd.mydomain.local
+#
+# Never put secrets in this file, it is stored in your git repository.
+
 sync:
   stage: sync
   tags:
     - shell-runner
-  timeout: 3 hours  # sync may take over 1 hour, which is de default timeout for a CI stage
-  variables:
-    HUB_USER: 'docker-hub-user'
-    HUB_PASS: 'docker-hub-password'  # Best to store secrets in a vault!
-    DEV_USER: 'dev-registry-user'
-    DEV_PASS: 'dev-registry-password'
-    PRD_USER: 'prd-registry-user'
-    PRD_PASS: 'prd-registry-password'
+  timeout: 3 hours  # sync may take over 1 hour, which is the default timeout for a CI job
   script:
-    - docker login --username ${HUB_USER} --password ${HUB_PASSWD}
-    - docker login harbor-dev.mydomain.local --username ${DEV_USER} --password ${DEV_PASSWD}
-    - docker login harbor-prd.mydomain.local --username ${PRD_USER} --password ${PRD_PASSWD}
+    # Passwords are passed via stdin, so they don't show up in the process list
+    - echo "${HUB_PASS}" | docker login --username "${HUB_USER}" --password-stdin
+    - echo "${DEV_PASS}" | docker login harbor-dev.mydomain.local --username "${DEV_USER}" --password-stdin
+    - echo "${PRD_PASS}" | docker login harbor-prd.mydomain.local --username "${PRD_USER}" --password-stdin
+    # dockerdd.py exits with a non-zero code if any image fails to sync,
+    # which marks this job as failed
     - python3 dockerdd.py jobs.yaml

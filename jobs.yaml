@@ -4,9 +4,11 @@ registries:
     address: default
   k8s:
     address: registry.k8s.io
-    folder: k8s.io
   dev:
     address: harbor-dev.mydomain.local/docker
+  dev-k8s:
+    # Images synced by the k8s-to-dev job, stored under the k8s.io prefix
+    address: harbor-dev.mydomain.local/docker/k8s.io
   prd:
     address: harbor-prd.mydomain.local/docker
 
@@ -16,6 +18,7 @@ jobs:
   k8s-to-dev:
     source: k8s
     target: dev
+    target_prefix: k8s.io
     imagelists:
     - kubernetes_k8s
   dockerhub-to-dev:
@@ -27,11 +30,16 @@ jobs:
     - postgres
     - ubuntu
     - vault
+  dev-to-prd-k8s:
+    source: dev-k8s
+    target: prd
+    target_prefix: k8s.io
+    imagelists:
+    - kubernetes_k8s
   dev-to-prd:
     source: dev
     target: prd
     imagelists:
-    - kubernetes_k8s
     - kubernetes
     - postgres
 
