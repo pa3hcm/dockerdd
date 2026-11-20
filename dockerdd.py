@@ -20,6 +20,29 @@ def get_local_image_manifest_digest(image_reference: str):
         print(f"FAIL to get local image manifest digest: {e}")
         return None
 
+def split_image(image_reference: str):
+    """Split an image reference into (name, tag).
+
+    The tag is whatever follows the last ':' after the last '/', so registry
+    ports (e.g. 'myreg:5000/foo:1.0') are kept as part of the name. When no
+    tag is given, 'latest' is used, just like Docker does. Digest references
+    ('foo@sha256:...') are not supported, because a digest cannot be used as a
+    tag in the target registry.
+    """
+    if '@' in image_reference:
+        raise ValueError("digest references (name@sha256:...) are not supported, use a tag")
+    last_part = image_reference.rsplit('/', 1)[-1]
+    if ':' in last_part:
+        name, tag = image_reference.rsplit(':', 1)
+    else:
+        name, tag = image_reference, 'latest'
+    if not name or not tag:
+        raise ValueError(f"invalid image reference '{image_reference}'")
+    return name, tag
+
+# Number of images that failed to sync
+failures = 0
+
 # Import yaml file
 if len(sys.argv) > 1:
     job_file = sys.argv[1]
@@ -53,7 +76,12 @@ for job in dddata['jobs']:
             image_name = image['name']
             lts = image.get('lts', False)
             result = 'ok'
-            image_name, image_tag = image_name.split(':')
+            try:
+                image_name, image_tag = split_image(image_name)
+            except ValueError as e:
+                print(f"  - {image_name}: FAIL: {e}")
+                failures += 1
+                continue
             if source_addr == 'default':
                 source_full = image_name + ':' + image_tag
             else:
@@ -74,6 +102,7 @@ for job in dddata['jobs']:
                     dockerimage = dockerclient.images.pull(source_full)
                 except Exception as e:
                     print(f"FAIL: {e}")
+                    failures += 1
                     if 'dockerimage' in locals():
                         del dockerimage
                     continue
@@ -85,6 +114,7 @@ for job in dddata['jobs']:
                         dockerimage.tag(target_full)
                     except Exception as e:
                         print(f"FAIL: {e}")
+                        failures += 1
                         dockerclient.images.remove(source_full)
                         if 'dockerimage' in locals():
                             del dockerimage
@@ -106,6 +136,7 @@ for job in dddata['jobs']:
                         dockerclient.images.remove(target_full)
                     except Exception as e:
                         print(f"FAIL: {e}")
+                        failures += 1
                         continue
     
                     # Check if image is available in target repo
@@ -114,6 +145,7 @@ for job in dddata['jobs']:
                     if osout != 0:
                         print("error... ", end='', flush=True)
                         result = 'FAIL'
+                        failures += 1
                     else:
                         print("ok... ", end='', flush=True)
 
@@ -124,4 +156,11 @@ for job in dddata['jobs']:
                     except:
                         pass
                     print(result)
+
+# Report the result and exit non-zero if any image failed, so CI pipelines
+# notice failed syncs
+if failures > 0:
+    print(f"{failures} image(s) failed to sync")
+    sys.exit(1)
+print("All images synced")
 
